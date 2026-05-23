@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Advanced Greenhouse Control System</title>
+
+<style>
+:root{
+  --bg:#07111f;
+  --panel:#0f172a;
+  --panel-2:#111c33;
+  --border:rgba(148,163,184,.18);
+  --text:#e5e7eb;
+  --muted:#94a3b8;
+  --green:#4ade80;
+  --blue:#38bdf8;
+  --yellow:#facc15;
+  --red:#fb7185;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI",Arial,sans-serif}
+body{background:radial-gradient(circle at top left,#0f2a1e,#07111f 45%);color:var(--text);min-height:100vh}
+
+.layout{display:flex;min-height:100vh}
+.sidebar{width:260px;background:rgba(2,6,23,.92);padding:24px 18px;border-right:1px solid var(--border);position:sticky;top:0;height:100vh}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:34px}
+.logo-icon{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--green),#16a34a);box-shadow:0 0 25px rgba(74,222,128,.35)}
+.logo h2{font-size:20px;color:var(--green)}
+.sidebar a{display:flex;align-items:center;gap:10px;color:var(--muted);padding:13px 14px;border-radius:12px;text-decoration:none;transition:.25s;margin-bottom:6px}
+.sidebar a:hover,.sidebar a.active{background:rgba(74,222,128,.10);color:var(--green)}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+header{background:rgba(2,6,23,.75);backdrop-filter:blur(12px);padding:18px 28px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+header h1{font-size:20px;font-weight:700}
+header p{font-size:13px;color:var(--muted);margin-top:3px}
+.time-pill{background:rgba(15,23,42,.9);border:1px solid var(--border);padding:10px 14px;border-radius:999px;color:var(--green);font-weight:600}
+
+.dashboard{padding:24px;display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:18px}
+.card{background:linear-gradient(180deg,rgba(17,24,39,.96),rgba(15,23,42,.96));padding:20px;border-radius:22px;border:1px solid var(--border);box-shadow:0 18px 45px rgba(0,0,0,.28);transition:.25s;overflow:hidden}
+.card:hover{transform:translateY(-4px);border-color:rgba(74,222,128,.35)}
+.card-wide{grid-column:span 2}
+.card h3{color:var(--green);font-size:15px;margin-bottom:10px;letter-spacing:.3px}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.value{font-size:36px;font-weight:800;line-height:1;margin-bottom:8px}
+.status{font-size:12px;font-weight:700;border-radius:999px;padding:6px 10px;background:rgba(74,222,128,.12);color:var(--green);white-space:nowrap}
+.status.warning{background:rgba(250,204,21,.12);color:var(--yellow)}
+.status.danger{background:rgba(251,113,133,.12);color:var(--red)}
+.desc{color:var(--muted);font-size:13px;min-height:20px}
+.progress{height:9px;background:#1f2937;border-radius:20px;margin:14px 0 12px;overflow:hidden}
+.progress div{height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--blue));border-radius:20px;transition:.35s}
+input{width:100%;margin-top:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#020617;color:white;outline:none}
+input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(74,222,128,.12)}
+canvas{width:100%;height:100px;margin-top:12px;background:rgba(2,6,23,.35);border-radius:14px}
+
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px}
+.controls button{padding:14px;border:none;border-radius:14px;background:#1e40af;color:white;cursor:pointer;font-weight:800;transition:.25s}
+.controls button:hover{transform:translateY(-2px)}
+.controls button.active{background:#16a34a;box-shadow:0 0 22px rgba(34,197,94,.28)}
+
+.system-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}
+.system-box{background:rgba(2,6,23,.45);border:1px solid var(--border);padding:14px;border-radius:16px}
+.system-box span{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}
+.system-box strong{font-size:18px}
+
+.alert{position:fixed;top:24px;right:24px;background:linear-gradient(135deg,#ef4444,#be123c);padding:15px 22px;border-radius:14px;display:none;font-weight:800;box-shadow:0 15px 40px rgba(239,68,68,.35);z-index:10}
+.footer{text-align:center;padding:14px;background:rgba(2,6,23,.85);border-top:1px solid var(--border);color:var(--muted);font-size:13px}
+
+@media(max-width:1050px){.dashboard{grid-template-columns:repeat(2,1fr)}.card-wide{grid-column:span 2}}
+@media(max-width:760px){.layout{flex-direction:column}.sidebar{width:100%;height:auto;position:relative}.sidebar nav{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.dashboard{grid-template-columns:1fr;padding:16px}.card-wide{grid-column:span 1}header{align-items:flex-start;gap:12px;flex-direction:column}.controls,.system-grid{grid-template-columns:1fr}}
+</style>
+</head>
+
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <h2>GreenSense</h2>
+    </div>
+    <nav>
+      <a href="#" class="active">Overview</a>
+      <a href="#">Sensors</a>
+      <a href="#">Automation</a>
+      <a href="#">Logs</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <header>
+      <div>
+        <h1>Advanced Greenhouse Monitoring Platform</h1>
+        <p>Real-time sensor tracking, automation controls, and AI-assisted status monitoring</p>
+      </div>
+      <div class="time-pill" id="time">--:--:--</div>
+    </header>
+
+    <section class="dashboard">
+      <div class="card sensor-card" data-type="temp">
+        <div class="card-top">
+          <div>
+            <h3>Temperature</h3>
+            <div class="value" id="tempD">25°C</div>
+          </div>
+          <span class="status" id="tempStatus">Normal</span>
+        </div>
+        <p class="desc" id="tempS">Ideal temperature range maintained.</p>
+        <div class="progress"><div id="tempBar"></div></div>
+        <canvas id="tempChart"></canvas>
+        <input id="tempI" type="number" value="25" min="0" max="60" oninput="update('temp')" />
+      </div>
+
+      <div class="card sensor-card" data-type="hum">
+        <div class="card-top">
+          <div>
+            <h3>Humidity</h3>
+            <div class="value" id="humD">60%</div>
+          </div>
+          <span class="status" id="humStatus">Normal</span>
+        </div>
+        <p class="desc" id="humS">Humidity is within the safe range.</p>
+        <div class="progress"><div id="humBar"></div></div>
+        <canvas id="humChart"></canvas>
+        <input id="humI" type="number" value="60" min="0" max="100" oninput="update('hum')" />
+      </div>
+
+      <div class="card sensor-card" data-type="soil">
+        <div class="card-top">
+          <div>
+            <h3>Soil Moisture</h3>
+            <div class="value" id="soilD">50%</div>
+          </div>
+          <span class="status" id="soilStatus">Normal</span>
+        </div>
+        <p class="desc" id="soilS">Soil moisture level is stable.</p>
+        <div class="progress"><div id="soilBar"></div></div>
+        <canvas id="soilChart"></canvas>
+        <input id="soilI" type="number" value="50" min="0" max="100" oninput="update('soil')" />
+      </div>
+
+      <div class="card sensor-card" data-type="light">
+        <div class="card-top">
+          <div>
+            <h3>Light Intensity</h3>
+            <div class="value" id="lightD">300 lx</div>
+          </div>
+          <span class="status" id="lightStatus">Normal</span>
+        </div>
+        <p class="desc" id="lightS">Light level is suitable for plant growth.</p>
+        <div class="progress"><div id="lightBar"></div></div>
+        <canvas id="lightChart"></canvas>
+        <input id="lightI" type="number" value="300" min="0" max="1000" oninput="update('light')" />
+      </div>
+
+      <div class="card card-wide">
+        <h3>Automation Controls</h3>
+        <p class="desc">Toggle devices manually or allow the system to respond to critical conditions.</p>
+        <div class="controls">
+          <button onclick="toggle(this)">Pump OFF</button>
+          <button onclick="toggle(this)">Fan OFF</button>
+          <button onclick="toggle(this)">Lights OFF</button>
+        </div>
+      </div>
+
+      <div class="card card-wide">
+        <h3>AI Control Status</h3>
+        <div class="value" id="ai">Stable</div>
+        <p class="desc" id="aiDesc">Monitoring all greenhouse conditions.</p>
+        <div class="system-grid">
+          <div class="system-box"><span>Mode</span><strong id="mode">Auto Assist</strong></div>
+          <div class="system-box"><span>Risk Level</span><strong id="risk">Low</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">GreenSense Interface v2.0 • Smart Greenhouse Dashboard</footer>
+  </main>
+</div>
+
+<div class="alert" id="alertBox">Critical condition detected</div>
+
+<script>
+const histories = {
+  temp:[25], hum:[60], soil:[50], light:[300]
+};
+
+const settings = {
+  temp:{unit:'°C', max:60, dangerHigh:45, warningHigh:35, warningLow:15, normal:'Ideal temperature range maintained.', warn:'Temperature needs attention.', danger:'High temperature detected.'},
+  hum:{unit:'%', max:100, dangerLow:25, warningLow:40, warningHigh:85, normal:'Humidity is within the safe range.', warn:'Humidity is outside the ideal range.', danger:'Humidity level is critically low.'},
+  soil:{unit:'%', max:100, dangerLow:30, warningLow:40, normal:'Soil moisture level is stable.', warn:'Soil moisture is getting low.', danger:'Irrigation is recommended.'},
+  light:{unit:' lx', max:1000, dangerLow:100, warningLow:200, warningHigh:850, normal:'Light level is suitable for plant growth.', warn:'Light level needs adjustment.', danger:'Insufficient light detected.'}
+};
+
+function clamp(value,min,max){return Math.min(Math.max(Number(value)||0,min),max)}
+
+function drawChart(canvasId,data,max){
+  const canvas=document.getElementById(canvasId);
+  const ctx=canvas.getContext('2d');
+  const ratio=window.devicePixelRatio||1;
+  const width=canvas.offsetWidth;
+  const height=canvas.offsetHeight;
+  canvas.width=width*ratio;
+  canvas.height=height*ratio;
+  ctx.scale(ratio,ratio);
+  ctx.clearRect(0,0,width,height);
+
+  ctx.strokeStyle='rgba(148,163,184,.18)';
+  ctx.lineWidth=1;
+  for(let i=1;i<4;i++){
+    ctx.beginPath();
+    ctx.moveTo(0,(height/4)*i);
+    ctx.lineTo(width,(height/4)*i);
+    ctx.stroke();
+  }
+
+  ctx.beginPath();
+  ctx.strokeStyle='#4ade80';
+  ctx.lineWidth=2.5;
+  data.forEach((value,index)=>{
+    const x=data.length===1?0:index*(width/(data.length-1));
+    const y=height-(value/max)*height;
+    index===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+}
+
+function setStatus(type,value){
+  const config=settings[type];
+  const status=document.getElementById(`${type}Status`);
+  const desc=document.getElementById(`${type}S`);
+  status.className='status';
+
+  let level='Normal';
+  let text=config.normal;
+
+  if((config.dangerHigh && value>=config.dangerHigh) || (config.dangerLow && value<=config.dangerLow)){
+    level='Critical';
+    text=config.danger;
+    status.classList.add('danger');
+  }else if((config.warningHigh && value>=config.warningHigh) || (config.warningLow && value<=config.warningLow)){
+    level='Warning';
+    text=config.warn;
+    status.classList.add('warning');
+  }
+
+  status.textContent=level;
+  desc.textContent=text;
+}
+
+function update(type){
+  const config=settings[type];
+  const input=document.getElementById(`${type}I`);
+  const value=clamp(input.value,0,config.max);
+  input.value=value;
+
+  document.getElementById(`${type}D`).textContent=value+config.unit;
+  document.getElementById(`${type}Bar`).style.width=`${(value/config.max)*100}%`;
+
+  histories[type].push(value);
+  if(histories[type].length>24) histories[type].shift();
+  drawChart(`${type}Chart`,histories[type],config.max);
+  setStatus(type,value);
+  checkAI();
+}
+
+function toggle(button){
+  button.classList.toggle('active');
+  button.textContent=button.textContent.includes('OFF')
+    ? button.textContent.replace('OFF','ON')
+    : button.textContent.replace('ON','OFF');
+}
+
+function updateTime(){
+  document.getElementById('time').textContent=new Date().toLocaleTimeString();
+}
+
+function checkAI(){
+  const temp=Number(document.getElementById('tempI').value);
+  const soil=Number(document.getElementById('soilI').value);
+  const light=Number(document.getElementById('lightI').value);
+  const alertBox=document.getElementById('alertBox');
+
+  const critical=temp>=45 || soil<=30 || light<=100;
+  alertBox.style.display=critical?'block':'none';
+  document.getElementById('ai').textContent=critical?'Intervention':'Stable';
+  document.getElementById('aiDesc').textContent=critical?'Automatic cooling, irrigation, or lighting action is recommended.':'Monitoring all greenhouse conditions.';
+  document.getElementById('risk').textContent=critical?'High':'Low';
+  document.getElementById('mode').textContent=critical?'Auto Response':'Auto Assist';
+}
+
+window.addEventListener('resize',()=>Object.keys(histories).forEach(type=>drawChart(`${type}Chart`,histories[type],settings[type].max)));
+setInterval(updateTime,1000);
+updateTime();
+Object.keys(histories).forEach(update);
+</script>
+</body>
+</html>
